@@ -46,6 +46,7 @@ class gui():
 	def main(self, root):
 		debug('gui', 'main()', root)
 
+		self.txdata = None
 		self.chdata = None
 
 		self.tab(root)
@@ -79,7 +80,7 @@ class gui():
 		header_item.setText(0, 'Bouquets')
 		header_item.setSizeHint(0, QSize(0, 0))
 
-		header_item = QTreeWidgetItem(('Index', 'Name', 'CHID', 'Provider', 'DATA'))
+		header_item = QTreeWidgetItem(('Index', 'Name', 'CHID', 'TXID', 'Type', 'Provider', 'Frequency', 'Polarization', 'Symbol Rate', 'FEC', 'SAT', 'System', 'DATA'))
 		#TODO FIX
 		# header_item.setSizeHint(0, QSize(50, 20))
 		# header_item.setSizeHint(1, QSize(100, 20))
@@ -133,6 +134,7 @@ class gui():
 	def new(self):
 		debug('gui', 'new()')
 
+		self.txdata = None
 		self.chdata = None
 
 		self.bouquets_tree.scrollToItem(self.bouquets_tree.topLevelItem(0))
@@ -151,7 +153,11 @@ class gui():
 
 		if dirname:
 			self.new()
-			self.chdata = e2db_parser().load(dirname)
+
+			channels = e2db_parser().load(dirname)
+
+			self.txdata = channels['txdata']
+			self.chdata = channels['chdata']
 		else:
 			return
 
@@ -166,7 +172,7 @@ class gui():
 		for bname in self.chdata:
 			debug('gui', 'load()', 'bname', bname)
 
-			if bname == 'channels':
+			if bname == 'transponders' or bname == 'channels':
 				continue
 
 			bdata = self.chdata[bname]
@@ -218,6 +224,8 @@ class gui():
 
 		# debug('gui', 'populate()', 'self.chdata[cur_chlist]', self.chdata[cur_chlist])
 
+		STYPES = {0: 'Data', 1: 'TV', 2: 'Radio', 10: 'Radio', 12: 'TV', 17: 'UHD', 22: 'H.264', 25: 'HD', 31: 'UHD'} #TODO move
+
 		for cid in cur_chdata:
 			if cid in self.chdata['channels']:
 				cdata = self.chdata['channels'][cid]
@@ -227,12 +235,16 @@ class gui():
 				else:
 					idx = cdata['index']
 
-				item = QTreeWidgetItem((str(idx), cdata['channel'], cid, cdata['data'][0][1], str(cdata['data'])))
-				item.setTextAlignment(4, Qt.AlignRight)
+				pname = cdata['data'][0][1]
+				stype = cdata['stype'] in STYPES and STYPES[cdata['stype']] or 'Data'
+				txdata = self.txdata[cdata['txid']]
+
+				item = QTreeWidgetItem((str(idx), cdata['chname'], cid, cdata['txid'], stype, pname, txdata['freq'], txdata['pol'], txdata['sr'], txdata['fec'], txdata['pos'], txdata['sys'], str(cdata['data'])))
+				item.setTextAlignment(12, Qt.AlignRight)
 
 				self.list_tree.addTopLevelItem(item)
 			else:
-				item = QTreeWidgetItem(('', cur_chdata[cid], cid, '', ''))
+				item = QTreeWidgetItem(('', cur_chdata[cid], cid))
 
 				self.list_tree.addTopLevelItem(item)
 

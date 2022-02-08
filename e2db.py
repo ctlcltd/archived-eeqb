@@ -8,21 +8,31 @@
 import os
 from io import BytesIO
 import re
-from ftplib import FTP
-from xml.etree import ElementTree
 
 from commons import *
 
 
+SAT_POL = ('H', 'V', 'L', 'R')
+SAT_FEC = ('', 'Auto', '1/2', '2/3', '3/4', '5/6', '7/8', '3/5', '4/5', '8/9', '9/10')
+SAT_INV = ('Auto', 'On', 'Off')
+SAT_SYS = ('DVB-S', 'DVB-S2')
+SAT_MOD = ('Auto', 'QPSK', 'QAM16', '8PSK')
+SAT_ROL = ('Auto', 'QPSK', 'QAM16', '8PSK')
+SAT_PIL = ('Auto', 'Off', 'On')
+
+
 
 class e2db_parser():
+	#TODO filter
 	allowed = r'(^blacklist|lamedb|settings|whitelist$)|(^(cables|satellites|terrestrial)\.xml$)|(^bouquets\.(radio|tv)$)|(^[^\.]+\.[\w\d]+\.(radio|radio\.simple|tv|tv\.simple)$)'
 
 	def parse_e2db(self, e2db):
 		debug('e2db_parser', 'parse_e2db()')
 
+		lamedb = self.parse_e2db_lamedb(e2db['lamedb'])
+
 		channels = {}
-		channels['lamedb'] = self.parse_e2db_lamedb(e2db['lamedb'])
+		channels['lamedb'] = lamedb
 
 		bouquets = filter(lambda path: path.startswith('bouquets.'), e2db)
 
@@ -33,47 +43,71 @@ class e2db_parser():
 				name = re.match(r'[^.]+.([\w\d]+).(\w+)', filename)
 				idx = name[2] + ':' + name[1]
 
-				channels[idx] = self.parse_e2db_userbouquet(channels['lamedb'], e2db[filename])
+				channels[idx] = self.parse_e2db_userbouquet(channels['lamedb']['services'], e2db[filename])
 
 		return channels
 
 	def parse_e2db_lamedb(self, lamedb):
 		debug('e2db_parser', 'parse_e2db_lamedb()')
 
-		db = {}
+		db = {'transponders': {}, 'services': {}}
 
-		step = False
+		step = 0
 		count = 0
 		index = 0
+		txid = ''
 		chid = ''
 
 		for line in lamedb:
+			if not step and line == 'transponders':
+				step = 1
+				continue
 			if not step and line == 'services':
-				step = True
+				step = 2
 				continue
 			elif step and line == 'end':
-				step = False
+				step = 0
 				continue
 
-			if step:
+			if step == 1:
 				count += 1
 
 				if count == 1:
-					# chid = line[:-5].upper().split(':')
-					chid = line.upper().split(':')
-					chid = chid[0].lstrip('0') + ':' + chid[2].lstrip('0') + ':' + chid[3].lstrip('0') + ':' + chid[1].lstrip('0')
+					tx = list(map(lambda a: a.lstrip('0'), line.upper().split(':')))
+					txid = tx[1] + ':' + tx[2] + ':' + tx[0]
+					db['transponders'][txid] = {'dvbns': tx[0], 'tid': tx[1], 'nid': tx[2]}
+				elif count == 2:
+					txdata = list(map(lambda a: int(a.lstrip('0') or 0), line[3:].split(':')))
+					db['transponders'][txid]['type'] = line[1:2]
+					db['transponders'][txid]['txdata'] = txdata
+				elif count == 3:
+					count = 0
+			elif step == 2:
+				count += 1
+
+				if count == 1:
+					ch = list(map(lambda a: a.lstrip('0'), line.upper().split(':')))
+					txid = ch[2] + ':' + ch[3] + ':' + ch[1]
+					chid = ch[0] + ':' + ch[2] + ':' + ch[3] + ':' + ch[1]
+					db['services'][chid] = {}
+					db['services'][chid]['ssid'] = ch[0]
+					db['services'][chid]['dvbns'] = ch[1]
+					db['services'][chid]['tsid'] = ch[2]
+					db['services'][chid]['onid'] = ch[3]
+					db['services'][chid]['stype'] = int(ch[4] or 0)
+					db['services'][chid]['snum'] = int(ch[5] or 0)
 					index += 1
 				elif count == 2:
-					db[chid] = {}
-					db[chid]['index'] = index
-					db[chid]['channel'] = to_UTF8(line)
+					db['services'][chid]['index'] = index
+					db['services'][chid]['txid'] = txid
+					db['services'][chid]['chname'] = to_UTF8(line)
 				elif count == 3:
 					chdata = line.split(',')
 
 					for i, value in enumerate(chdata):
 						chdata[i] = value.split(':') 
 
-					db[chid]['data'] = chdata
+					db['services'][chid]['data'] = chdata
 
 					count = 0
 					chid = ''
@@ -95,7 +129,7 @@ class e2db_parser():
 
 		return bs
 
-	def parse_e2db_userbouquet(self, channels_lamedb, userbouquet):
+	def parse_e2db_userbouquet(self, services, userbouquet):
 		debug('e2db_parser', 'parse_e2db_userbouquet()')
 
 		ub = {'name': '', 'list': {}}
@@ -115,7 +149,6 @@ class e2db_parser():
 				continue
 
 			if step:
-				# chid = line[9:-7].upper().split(':')
 				chid = line[9:-7].upper().split(':')
 
 				if len(chid) > 6:
@@ -128,18 +161,16 @@ class e2db_parser():
 				else:
 					chid = False
 
-				if chid and chid in channels_lamedb and chid not in ub['list']:
+				if chid and chid in services and chid not in ub['list']:
 					ub['list'][chid] = index
 
 		return ub
 
-	def get_channels_data(self, e2db):
+	def get_channels_data(self, channels):
 		debug('e2db_parser', 'get_channels_data()')
 
-		chdata= {}
-		channels = self.parse_e2db(e2db)
-
-		chdata['channels'] = channels['lamedb']
+		chdata = {}
+		chdata['channels'] = channels['lamedb']['services']
 		chdata['tv:0'] = {'name': 0, 'list': {}}
 		chdata['radio:0'] = {'name': 0, 'list': {}}
 		groups = {'tv': {}, 'radio': {}}
@@ -158,7 +189,7 @@ class e2db_parser():
 
 		index = {'tv': 0, 'radio': 0}
 
-		for chid in channels['lamedb']:
+		for chid in channels['lamedb']['services']:
 			if chid in groups['tv']:
 				index['tv'] += 1
 				chdata['tv:0']['list'][chid] = index['tv']
@@ -170,35 +201,33 @@ class e2db_parser():
 
 		return chdata
 
-	def get_ftpfile(self, ftp, filename):
-		debug('e2db_parser', 'get_ftpfile()')
+	#TODO
+	def get_transponders_data(self, channels):
+		debug('e2db_parser', 'get_transponders_data()')
 
-		try:
-			reader = BytesIO()
-			ftp.retrbinary('RETR ' + filename, reader.write)
-			return reader.getvalue()
-		except Exception as err:
-			error('e2db_parser', 'get_ftpfile()', 'FTPcom Exception', err)
-		except:
-			error('e2db_parser', 'get_ftpfile()')
+		txdata = channels['lamedb']['transponders']
 
-	def get_e2db_ftp(self):
-		debug('e2db_parser', 'get_e2db_ftp()')
+		for txid in txdata:
+			tx = txdata[txid]
 
-		e2db = {}
+			if not tx['type'] == 's':
+				continue
 
-		try:
-			ftp = FTPcom().open()
-			e2db = update(ftp)
-		except Exception as err:
-			error('e2db_parser', 'get_e2db_ftp()', 'FTPcom Exception', err)
-		except:
-			error('e2db_parser', 'get_e2db_ftp()')
-		#TODO FIX
-		# else:
-		# 	ftp.close()
+			tx['freq'] = '{:n}'.format(tx['txdata'][0] / 1e3)
+			tx['sr'] = '{:n}'.format(tx['txdata'][1] / 1e3)
+			tx['pol'] = SAT_POL[tx['txdata'][2]]
+			tx['fec'] = SAT_FEC[tx['txdata'][3]]
+			tx['pos'] = str(tx['txdata'][4]) #TODO satellites.xml
+			tx['inv'] = SAT_INV[tx['txdata'][5]]
+			tx['flgs'] = tx['txdata'][6]
+			tx['sys'] = 7 in tx['txdata'] and SAT_SYS[tx['txdata'][7]] or SAT_SYS[0]
+			tx['mod'] = 8 in tx['txdata'] and SAT_MOD[tx['txdata'][8]] or SAT_MOD[0]
+			tx['rol'] = 9 in tx['txdata'] and SAT_ROL[tx['txdata'][9]] or None # DVB-S2 only
+			tx['pil'] = 10 in tx['txdata'] and SAT_PIL[tx['txdata'][10]] or None # DVB-S2 only
 
-		return e2db
+		# debug('e2db_parser', 'get_transponders_data()', 'txdata', txdata)
+
+		return txdata
 
 	def get_e2db_localdir(self, localdir):
 		debug('e2db_parser', 'get_e2db_localdir()')
@@ -222,6 +251,9 @@ class e2db_parser():
 		debug('e2db_parser', 'load()', localdir)
 
 		e2db = self.get_e2db_localdir(localdir)
-		chdata = self.get_channels_data(e2db)
+		channels = self.parse_e2db(e2db)
 
-		return chdata
+		chdata = self.get_channels_data(channels)
+		txdata = self.get_transponders_data(channels)
+
+		return {'txdata': txdata, 'chdata': chdata}

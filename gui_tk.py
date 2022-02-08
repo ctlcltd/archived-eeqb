@@ -45,6 +45,7 @@ class gui():
 	def main(self, root):
 		debug('gui', 'main()', root)
 
+		self.txdata = None
 		self.chdata = None
 
 		self.tab(root)
@@ -73,16 +74,32 @@ class gui():
 
 		self.bouquets_tree.configure(xscrollcommand=bouquets_hsb.set, yscrollcommand=bouquets_vsb.set)
 
-		self.list_tree = ttk.Treeview(channels, columns=('Index', 'Name', 'CHID', 'Provider', 'DATA'), show='headings')
+		self.list_tree = ttk.Treeview(channels, columns=('Index', 'Name', 'CHID', 'TXID', 'Type', 'Provider', 'Frequency', 'Polarization', 'Symbol Rate', 'FEC', 'SAT', 'System', 'DATA'), show='headings')
 		self.list_tree.column('Index', width=50)
 		self.list_tree.column('Name', width=150)
 		self.list_tree.column('CHID', width=100)
+		self.list_tree.column('TXID', width=100)
+		self.list_tree.column('Type', width=50)
 		self.list_tree.column('Provider', width=100)
+		self.list_tree.column('Frequency', width=50)
+		self.list_tree.column('Polarization', width=50)
+		self.list_tree.column('Symbol Rate', width=50)
+		self.list_tree.column('FEC', width=50)
+		self.list_tree.column('SAT', width=50)
+		self.list_tree.column('System', width=50)
 		self.list_tree.column('DATA', anchor=E)
 		self.list_tree.heading('Index', text='Index')
 		self.list_tree.heading('Name', text='Name')
 		self.list_tree.heading('CHID', text='CHID')
+		self.list_tree.heading('TXID', text='TXID')
+		self.list_tree.heading('Type', text='Type')
 		self.list_tree.heading('Provider', text='Provider')
+		self.list_tree.heading('Frequency', text='Frequency')
+		self.list_tree.heading('Polarization', text='Polarization')
+		self.list_tree.heading('Symbol Rate', text='Symbol Rate')
+		self.list_tree.heading('FEC', text='FEC')
+		self.list_tree.heading('SAT', text='SAT')
+		self.list_tree.heading('System', text='System')
 		self.list_tree.heading('DATA', text='DATA')
 
 		list_vsb = ttk.Scrollbar(channels, orient=VERTICAL, command=self.list_tree.yview)
@@ -136,6 +153,7 @@ class gui():
 	def new(self):
 		debug('gui', 'new()')
 
+		self.txdata = None
 		self.chdata = None
 
 		self.bouquets_tree.delete(*self.bouquets_tree.get_children())
@@ -152,7 +170,11 @@ class gui():
 
 		if dirname:
 			self.new()
-			self.chdata = e2db_parser().load(dirname)
+
+			channels = e2db_parser().load(dirname)
+
+			self.txdata = channels['txdata']
+			self.chdata = channels['chdata']
 		else:
 			return
 
@@ -161,7 +183,7 @@ class gui():
 		for bname in self.chdata:
 			debug('gui', 'load()', 'bname', bname)
 
-			if bname == 'channels':
+			if bname == 'transponders' or bname == 'channels':
 				continue
 
 			bdata = self.chdata[bname]
@@ -194,6 +216,8 @@ class gui():
 
 		# debug('gui', 'populate()', 'self.chdata[cur_chlist]', self.chdata[cur_chlist])
 
+		STYPES = {0: 'Data', 1: 'TV', 2: 'Radio', 10: 'Radio', 12: 'TV', 17: 'UHD', 22: 'H.264', 25: 'HD', 31: 'UHD'} #TODO move
+
 		for cid in cur_chdata:
 			if cid in self.chdata['channels']:
 				cdata = self.chdata['channels'][cid]
@@ -203,9 +227,13 @@ class gui():
 				else:
 					idx = cdata['index']
 
-				self.list_tree.insert('', 'end', cid, values=(idx, cdata['channel'], cid, cdata['data'][0][1], cdata['data']))
+				pname = cdata['data'][0][1]
+				stype = cdata['stype'] in STYPES and STYPES[cdata['stype']] or 'Data'
+				txdata = self.txdata[cdata['txid']]
+
+				self.list_tree.insert('', 'end', cid, values=(idx, cdata['chname'], cid, cdata['txid'], stype, pname, txdata['freq'], txdata['pol'], txdata['sr'], txdata['fec'], txdata['pos'], txdata['sys'], str(cdata['data'])))
 			else:
-				self.list_tree.insert('', 'end', cid, values=('', cur_chdata[cid], cid, '', ''))
+				self.list_tree.insert('', 'end', cid, values=('', cur_chdata[cid], cid))
 
 
 class Contextual:
