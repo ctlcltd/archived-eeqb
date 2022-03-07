@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 #  config.py
 #  
+#  @link https://github.com/ctlcltd/e2-sat-editor-qb
+#  @copyright e2 SAT Editor Team
 #  @author Leonardo Laureti
+#  @version 0.1
 #  @license MIT License
 #  
 

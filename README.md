@@ -1,4 +1,4 @@
-# enigma2 channel editor   📡
+# e2 SAT Editor qb   📡
 
 An enigma2 channel list editor – under development.
 
@@ -56,7 +56,7 @@ Lauch with the following command:
  
 ## Contributing
 
-You can open [issues](https://github.com/ctlcltd/enigma2-channel-editor/issues) to report bug, request features or send a [Pull Request](https://github.com/ctlcltd/enigma2-channel-editor/pulls).
+You can open [issues](https://github.com/ctlcltd/e2-sat-editor-qb/issues) to report bug, request features or send a [Pull Request](https://github.com/ctlcltd/e2-sat-editor-qb/pulls).
 
 
 ## License
