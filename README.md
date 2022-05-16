@@ -1,6 +1,8 @@
-# e2 SAT Editor qb   📡
+# e2se-qb   📡
 
-An enigma2 channel list editor – under development.
+An enigma2 channel list editor – archived.
+
+**This project is freezed in favour of this other: https://github.com/ctlcltd/e2-sat-editor.**
 
 ![screenshot](../res/enigma2-channel-editor.jpg)
 
