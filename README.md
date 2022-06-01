@@ -1,18 +1,16 @@
-# e2se-qb   📡
+# e2se-qb
 
-An enigma2 channel list editor – archived.
+**This project is freezed in favour of this other: https://github.com/ctlcltd/e2-sat-editor**
 
-**This project is freezed in favour of this other: https://github.com/ctlcltd/e2-sat-editor.**
-
-![screenshot](../res/enigma2-channel-editor.jpg)
-
-If you are looking for a ready-to-use Python channel editor, you could try this one: https://github.com/DYefremov/DemonEditor.
+ 
 
 I started this project starting from code of my remote controller here: https://github.com/ctlcltd/remote-gx-ir.
 
 *At the moment it supports enigma lamedb version 4 only.*
 
 My goal is obtain an almost fast editor, scriptable, to handle channel lists.
+
+If you are looking for a ready-to-use Python channel editor, you could try this one: https://github.com/DYefremov/DemonEditor.
 
  
 ## Requirements
@@ -36,7 +34,7 @@ https://www.python.org/downloads/
 
 - Then clone the repository:
 
-```git clone https://github.com/ctlcltd/enigma2-channel-editor.git```
+```git clone https://github.com/ctlcltd/e2se-qb.git```
 
 - To select the GUI toolkit, edit the *config.py* file, ```GUI_INTERFACE = 'qt6' # tk | qt6```
 
@@ -58,7 +56,7 @@ Lauch with the following command:
  
 ## Contributing
 
-You can open [issues](https://github.com/ctlcltd/e2-sat-editor-qb/issues) to report bug, request features or send a [Pull Request](https://github.com/ctlcltd/e2-sat-editor-qb/pulls).
+You can open [issues](https://github.com/ctlcltd/e2se-qb/issues) to report bug, request features or send a [Pull Request](https://github.com/ctlcltd/e2se-qb/pulls).
 
 
 ## License
