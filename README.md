@@ -1,4 +1,4 @@
-# e2se-qb
+# archived-eeqb
 
 **This project is freezed in favour of this other: https://github.com/ctlcltd/e2-sat-editor**
 
